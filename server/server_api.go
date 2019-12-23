@@ -30,16 +30,20 @@ func (s *Server) api(r *http.Request) error {
 	//convert url into torrent bytes
 	if action == "url" {
 		url := string(data)
-		remote, err := http.Get(url)
-		if err != nil {
-			return fmt.Errorf("Invalid remote torrent URL: %s (%s)", err, url)
+		if strings.Contains(url, "rss") || strings.Contains(url, "feed") { //assume is rss feed
+			return s.engine.NewRSS(url)
+		} else {
+			remote, err := http.Get(url)
+			if err != nil {
+				return fmt.Errorf("Invalid remote torrent URL: %s (%s)", err, url)
+			}
+			//TODO enforce max body size (32k?)
+			data, err = ioutil.ReadAll(remote.Body)
+			if err != nil {
+				return fmt.Errorf("Failed to download remote torrent: %s", err)
+			}
+			action = "torrentfile"
 		}
-		//TODO enforce max body size (32k?)
-		data, err = ioutil.ReadAll(remote.Body)
-		if err != nil {
-			return fmt.Errorf("Failed to download remote torrent: %s", err)
-		}
-		action = "torrentfile"
 	}
 
 	//convert torrent bytes into magnet

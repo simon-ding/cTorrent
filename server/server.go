@@ -133,6 +133,17 @@ func (s *Server) Run(version string) error {
 			time.Sleep(5 * time.Second)
 		}
 	}()
+	defer s.engine.Close()
+	go func() {
+		for {
+			ch := time.Tick(time.Minute * 1)
+			<-ch
+			log.Println("downloading new updates")
+			if err := s.engine.RSSDownloadNew(); err != nil {
+				log.Println(err)
+			}
+		}
+	}()
 
 	host := s.Host
 	if host == "" {
