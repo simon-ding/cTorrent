@@ -1,0 +1,13 @@
+<div class="section-header">
+    <h3 class="ui header">
+        收藏
+    </h3>
+    <div class="ui four column grid">
+        <div class="item" ng-repeat="tv in state.FavsTV" >
+            <a href="{{ tv.url }}" class="ui small image" target="_blank">
+                <img src="{{ tv.poster }}" alt="{{ tv.cnname }}">
+            </a>
+        </div>
+
+    </div>
+</div>

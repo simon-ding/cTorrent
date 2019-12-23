@@ -4,6 +4,7 @@ go 1.13
 
 require (
 	github.com/NYTimes/gziphandler v1.1.1
+	github.com/PuerkitoBio/goquery v1.5.0
 	github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d // indirect
 	github.com/ajg/form v1.5.1 // indirect
 	github.com/anacrolix/torrent v1.10.0

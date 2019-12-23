@@ -2,13 +2,11 @@ package engine
 
 import (
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
+	"github.com/simon-ding/cloud-torrent/storage"
 	"github.com/simon-ding/cloud-torrent/yyets"
-	bolt "go.etcd.io/bbolt"
 	"log"
 	"os"
-	"path"
 	"path/filepath"
 	"sync"
 	"time"
@@ -24,12 +22,11 @@ type Engine struct {
 	client   *torrent.Client
 	config   Config
 	ts       map[string]*Torrent
-	db       *bolt.DB
-	bucket   string
+	db       *storage.DB
 }
 
 func New() *Engine {
-	return &Engine{ts: map[string]*Torrent{}, bucket: "data"}
+	return &Engine{ts: map[string]*Torrent{}}
 }
 
 func (e *Engine) Config() Config {
@@ -37,6 +34,7 @@ func (e *Engine) Config() Config {
 }
 
 func (e *Engine) Configure(c Config) error {
+	e.db.Close()
 	//recieve config
 	if e.client != nil {
 		e.client.Close()
@@ -63,107 +61,121 @@ func (e *Engine) Configure(c Config) error {
 	//reset
 	e.GetTorrents()
 
-	db, err := bolt.Open(path.Join(c.DownloadDirectory, ".data.bolt.db"), 0600, nil)
+	e.db = storage.GetDB(c.DownloadDirectory)
+	e.db.PutLogin(c.YYETSUsername, c.YYETSPassword)
+	go e.UpdateFavs()
+	return nil
+}
+
+type User struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+func (e *Engine) SetLogin(username, password string) error {
+	return e.db.PutLogin(username, password)
+}
+
+func (e *Engine) UpdateFavs() error {
+	m := e.db.GetLogin()
+
+	c := yyets.Client{}
+	c.SetLogin(m["username"], m["password"])
+	favs, err := c.UserFavs()
 	if err != nil {
 		return err
 	}
-	db.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists([]byte(e.bucket))
+	return e.db.PutFavs(favs)
+}
+
+func (e *Engine) Close() {
+	e.db.Close()
+}
+
+//func (e *Engine) NewRSS(rssUrl string) error {
+//	log.Printf("add new rss url %s\n", rssUrl)
+//	splits := strings.Split(rssUrl, "/")
+//	resourceID := splits[len(splits) - 1]
+//
+//	return e.addFavs(resourceID)
+//}
+//
+//func (e *Engine) addFavs(resourceID string) error {
+//	return e.db.Update(func(tx *bolt.Tx) error {
+//		b := tx.Bucket([]byte(e.bucket))
+//		var rss []string
+//		data := b.Get([]byte("favs"))
+//		if data != nil {
+//			if err := json.Unmarshal(data, &rss); err != nil {
+//				return err
+//			}
+//		}
+//		for _, r := range rss {
+//			if resourceID == r { //already exists
+//				return nil
+//			}
+//		}
+//		rss = append(rss, resourceID)
+//		data, err := json.Marshal(&rss)
+//		if err != nil {
+//			return err
+//		}
+//		return b.Put([]byte("favs"), data)
+//	})
+//}
+
+func (e *Engine) DownloadUpdates() error {
+
+	favs := e.db.GetFavs()
+	for _, id := range favs {
+		err := e.downloadUpdates(id)
 		if err != nil {
-			return fmt.Errorf("create bucket: %s", err)
+			log.Println(err)
 		}
-		return nil
-	})
-
-	e.db = db
-
+	}
 	return nil
 }
-func (e *Engine) Close() error {
-	return e.db.Close()
+
+func (e *Engine) downloadUpdates(resourceID string) error {
+	url := yyets.FeedURL + resourceID
+	c := &yyets.Client{}
+	feed, err := c.ParseRssURL(url)
+	if err != nil {
+		return err
+	}
+	for _, item := range feed.Channel.Item {
+		if time.Now().Sub(item.DateFormatted) > time.Hour*24*7 { //only download recent items
+			continue
+		}
+		var in = e.db.AddDownload(resourceID, item.Guid)
+
+		if in { //already downloaded
+			continue
+		}
+		log.Printf("begin downloading %s", item.Title)
+		if err := e.NewMagnet(item.Magnet); err != nil {
+			log.Println(err)
+			continue
+		}
+	}
+	return nil
 }
 
-func (e *Engine) NewRSS(rssUrl string) error {
-	log.Printf("add new rss url %s\n", rssUrl)
-	return e.db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(e.bucket))
-		var rss []string
-		data := b.Get([]byte("rss"))
-		if data != nil {
-			if err := json.Unmarshal(data, &rss); err != nil {
-				return err
-			}
-		}
-		rss = append(rss, rssUrl)
-		data, err := json.Marshal(&rss)
-		if err != nil {
-			return err
-		}
-		return b.Put([]byte("rss"), data)
-	})
-}
+func (e *Engine) GetFavs() []yyets.Detail {
+	var watches = e.db.GetFavs()
 
-func (e *Engine) RSSDownloadNew() error {
-	var rss []string
-	e.db.Update(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte(e.bucket))
-		data := b.Get([]byte("rss"))
-		if data != nil {
-			err := json.Unmarshal(data, &rss)
-			if err != nil {
-				log.Println(err)
-			}
-		}
-		return nil
-	})
-	for _, url := range rss {
-		var downloaded []string
-		e.db.Update(func(tx *bolt.Tx) error {
-			b := tx.Bucket([]byte(e.bucket))
-			data := b.Get([]byte(url))
-			if data != nil {
-				err := json.Unmarshal(data, &downloaded)
-				if err != nil {
-					log.Println(err)
-				}
-			}
-			return nil
-		})
-		feed, err := yyets.ParseRssURL(url)
+	c := yyets.Client{}
+	var res []yyets.Detail
+	for _, w := range watches {
+		detail, err := c.GetDetail(w)
 		if err != nil {
 			log.Println(err)
 			continue
 		}
-		for _, item := range feed.Channel.Item {
-			var in bool
-			for _, d := range downloaded {
-				if d == item.Guid {
-					in = true
-				}
-			}
-			if in { //already downloaded
-				continue
-			}
-			log.Printf("begin downloading %s", item.Title)
-			if err := e.NewMagnet(item.Magnet); err != nil {
-				log.Println(err)
-				continue
-			}
-			downloaded = append(downloaded, item.Guid)
-		}
-		e.db.Update(func(tx *bolt.Tx) error {
-			b := tx.Bucket([]byte(e.bucket))
-			data, err := json.Marshal(&downloaded)
-			if err != nil {
-				return err
-			}
-			return b.Put([]byte(url), data)
-		})
-
+		res = append(res, *detail)
 	}
-	return nil
+	return res
 }
-
 func (e *Engine) NewMagnet(magnetURI string) error {
 	tt, err := e.client.AddMagnet(magnetURI)
 	if err != nil {

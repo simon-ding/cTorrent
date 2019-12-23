@@ -31,7 +31,7 @@ func (s *Server) api(r *http.Request) error {
 	if action == "url" {
 		url := string(data)
 		if strings.Contains(url, "rss") || strings.Contains(url, "feed") { //assume is rss feed
-			return s.engine.NewRSS(url)
+			//return s.engine.NewRSS(url)
 		} else {
 			remote, err := http.Get(url)
 			if err != nil {

@@ -7,4 +7,6 @@ type Config struct {
 	EnableUpload      bool
 	EnableSeeding     bool
 	IncomingPort      int
+	YYETSUsername     string
+	YYETSPassword     string
 }

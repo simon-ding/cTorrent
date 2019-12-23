@@ -3,13 +3,33 @@
   <div class="field"
     ng-repeat="(k,v) in state.Config"
     ng-init="type = inputType(v)">
-    <div ng-if="type == 'check'">
-      <checkbox type="toggle"
-        ng-model="state.Config[k]">{{ k | addspaces }}</checkbox>
+    <div ng-if="k == 'AutoStart'">
+      <checkbox type="toggle" ng-model="state.Config[k]">自动启动</checkbox>
     </div>
-    <div ng-if="type != 'check'">
-      <label>{{ k | addspaces }}</label>
-      <input type="{{type}}" ng-model="state.Config[k]"></input>
+    <div ng-if="k == 'DisableEncryption'">
+      <checkbox type="toggle" ng-model="state.Config[k]">禁用加密</checkbox>
+    </div>
+    <div ng-if="k == 'DownloadDirectory'">
+      <label>下载目录</label>
+      <input type="text" ng-model="state.Config[k]" ></input>
+    </div>
+    <div ng-if="k == 'EnableUpload'">
+      <checkbox type="toggle" ng-model="state.Config[k]">开启上传</checkbox>
+    </div>
+    <div ng-if="k == 'EnableSeeding'">
+      <checkbox type="toggle" ng-model="state.Config[k]">开启做种</checkbox>
+    </div>
+    <div ng-if="k == 'IncomingPort'">
+      <label>入端口</label>
+      <input type="number" ng-model="state.Config[k]" ></input>
+    </div>
+    <div ng-if="k == 'YYETSUsername'">
+      <label>人人用户名</label>
+      <input type="text" ng-model="state.Config[k]" ></input>
+    </div>
+    <div ng-if="k == 'YYETSPassword'">
+      <label>人人密码</label>
+      <input type="password" ng-model="state.Config[k]" ></input>
     </div>
   </div>
   <div class="buttons">

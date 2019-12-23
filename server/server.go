@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"github.com/simon-ding/cloud-torrent/yyets"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -49,6 +50,7 @@ type Server struct {
 		Config          engine.Config
 		SearchProviders scraper.Config
 		Downloads       *fsNode
+		FavsTV          []yyets.Detail
 		Torrents        map[string]*engine.Torrent
 		Users           map[string]string
 		Stats           struct {
@@ -119,6 +121,7 @@ func (s *Server) Run(version string) error {
 		for {
 			s.state.Lock()
 			s.state.Torrents = s.engine.GetTorrents()
+			s.state.FavsTV = s.engine.GetFavs()
 			s.state.Downloads = s.listFiles()
 			s.state.Unlock()
 			s.state.Push()
@@ -136,12 +139,13 @@ func (s *Server) Run(version string) error {
 	defer s.engine.Close()
 	go func() {
 		for {
-			ch := time.Tick(time.Minute * 1)
+			ch := time.Tick(time.Hour * 1)
 			<-ch
 			log.Println("downloading new updates")
-			if err := s.engine.RSSDownloadNew(); err != nil {
+			if err := s.engine.DownloadUpdates(); err != nil {
 				log.Println(err)
 			}
+			s.engine.UpdateFavs()
 		}
 	}()
 
