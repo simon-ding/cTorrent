@@ -18,6 +18,6 @@ RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build  -a -ldflags \
 FROM alpine AS server
 WORKDIR /torrent/
 COPY --from=server_builder /torrent/cmd/cloud_torrent .
-COPY ./static .
+COPY ./static ./static
 
 ENTRYPOINT ["/torrent/cloud_torrent"]
