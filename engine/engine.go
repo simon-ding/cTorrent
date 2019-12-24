@@ -85,7 +85,11 @@ func (e *Engine) UpdateFavs() error {
 	if err != nil {
 		return err
 	}
-	return e.db.PutFavs(favs)
+	e.db.PutFavs(favs)
+	for _, f := range favs {
+		e.downloadUpdates(f)
+	}
+	return nil
 }
 
 func (e *Engine) Close() {
