@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -101,6 +102,8 @@ func (s *Server) Run(version string) error {
 		EnableUpload:      true,
 		AutoStart:         true,
 	}
+	s.ConfigPath = path.Join(c.DownloadDirectory, s.ConfigPath)
+
 	if _, err := os.Stat(s.ConfigPath); err == nil {
 		if b, err := ioutil.ReadFile(s.ConfigPath); err != nil {
 			return fmt.Errorf("Read configuration error: %s", err)
