@@ -14,6 +14,7 @@ func main() {
 		Title:      "Cloud Torrent",
 		Port:       3000,
 		ConfigPath: "cloud-torrent.json",
+		Log:        true,
 	}
 
 	o := opts.New(&s)

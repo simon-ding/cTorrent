@@ -142,7 +142,7 @@ func (s *Server) Run(version string) error {
 	defer s.engine.Close()
 	go func() {
 		for {
-			ch := time.Tick(time.Hour * 1)
+			ch := time.Tick(time.Minute * 30)
 			<-ch
 			log.Println("downloading new updates")
 			if err := s.engine.DownloadUpdates(); err != nil {
