@@ -3,13 +3,17 @@ package engine
 import (
 	"encoding/hex"
 	"fmt"
+	storage2 "github.com/anacrolix/torrent/storage"
 	"github.com/simon-ding/cloud-torrent/storage"
 	"github.com/simon-ding/cloud-torrent/yyets"
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"sync"
 	"time"
+	"unicode"
 
 	"github.com/anacrolix/torrent"
 	"github.com/anacrolix/torrent/metainfo"
@@ -35,6 +39,7 @@ func (e *Engine) Config() Config {
 
 func (e *Engine) Configure(c Config) error {
 	e.db.Close()
+	var re = regexp.MustCompile(`.*?S..E..`)
 	//recieve config
 	if e.client != nil {
 		e.client.Close()
@@ -45,9 +50,22 @@ func (e *Engine) Configure(c Config) error {
 	}
 	tc := torrent.NewDefaultClientConfig()
 	tc.ListenPort = c.IncomingPort
-	tc.DataDir = c.DownloadDirectory
+
 	tc.NoUpload = !c.EnableUpload
 	tc.Seed = c.EnableSeeding
+	tc.DefaultStorage = storage2.NewFileWithCustomPathMaker(c.DownloadDirectory, func(baseDir string, info *metainfo.Info, infoHash metainfo.Hash) string {
+		if re.MatchString(info.Name) { //is a tv episode
+			name := re.FindString(info.Name) //eg. 猎魔人.The.Witcher.S01E07.中英字幕.WEBrip.720P-人人影视.mp4
+			p := strings.Split(name, ".")
+			if containChinese(p[0]) && len(p) > 2 {
+				p = p[1 : len(p)-1] //去掉开头和结尾，只保留英文部分
+			} else {
+				p = p[:len(p)-1]
+			}
+			return strings.Join(p, " ")
+		}
+		return baseDir
+	})
 	//tc.DisableEncryption = c.DisableEncryption
 
 	client, err := torrent.NewClient(tc)
@@ -352,4 +370,13 @@ func str2ih(str string) (metainfo.Hash, error) {
 		return ih, fmt.Errorf("Invalid length")
 	}
 	return ih, nil
+}
+
+func containChinese(s string) bool {
+	for _, r := range s {
+		if unicode.Is(unicode.Han, r) {
+			return true
+		}
+	}
+	return false
 }
