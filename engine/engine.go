@@ -8,6 +8,7 @@ import (
 	"github.com/simon-ding/cloud-torrent/yyets"
 	"log"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -62,7 +63,7 @@ func (e *Engine) Configure(c Config) error {
 			} else {
 				p = p[:len(p)-1]
 			}
-			return strings.Join(p, " ")
+			return path.Join(baseDir, "TV", strings.Join(p, " "))
 		}
 		return baseDir
 	})
