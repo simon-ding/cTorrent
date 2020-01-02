@@ -81,8 +81,9 @@ func (c *Client) GetDetail(resourceID string) (*Detail, error) {
 			data, err = ioutil.ReadAll(resp.Body)
 			resp.Body.Close()
 			break
+		} else if err == nil {
+			resp.Body.Close()
 		}
-		resp.Body.Close()
 	}
 	err := json.Unmarshal(data, &res)
 	if err != nil {
