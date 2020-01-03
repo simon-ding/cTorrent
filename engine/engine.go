@@ -88,7 +88,7 @@ func (e *Engine) Configure(c Config) error {
 	go func() { //load stored mangnets
 		mangnets := e.db.GetTorrents()
 		for _, m := range mangnets {
-			e.client.AddMagnet(m)
+			e.NewMagnet(m)
 		}
 	}()
 	return nil
