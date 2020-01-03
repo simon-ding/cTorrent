@@ -51,7 +51,7 @@ func (d *DB) PersistTorrents(ts []string) error {
 		if err != nil {
 			return err
 		}
-		return b.Put([]byte(favs), data)
+		return b.Put([]byte(torrents), data)
 	})
 
 }

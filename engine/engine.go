@@ -28,6 +28,7 @@ type Engine struct {
 	config   Config
 	ts       map[string]*Torrent
 	db       *storage.DB
+	lock     sync.Mutex
 }
 
 func New() *Engine {
@@ -155,6 +156,8 @@ func (e *Engine) Close() {
 //}
 
 func (e *Engine) persistTorrents() {
+	e.lock.Lock()
+	defer e.lock.Unlock()
 	var mangets []string
 
 	for _, v := range e.ts {
