@@ -83,6 +83,13 @@ func (e *Engine) Configure(c Config) error {
 	e.db = storage.GetDB(c.DownloadDirectory)
 	e.db.PutLogin(c.YYETSUsername, c.YYETSPassword)
 	go e.UpdateFavs()
+
+	go func() { //load stored mangnets
+		mangnets := e.db.GetTorrents()
+		for _, m := range mangnets {
+			e.client.AddMagnet(m)
+		}
+	}()
 	return nil
 }
 
@@ -146,6 +153,22 @@ func (e *Engine) Close() {
 //		return b.Put([]byte("favs"), data)
 //	})
 //}
+
+func (e *Engine) persistTorrents() {
+	var mangets []string
+
+	for _, v := range e.ts {
+		meta := v.t.Metainfo()
+		info, err := meta.UnmarshalInfo()
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		mag := meta.Magnet(info.Name, meta.HashInfoBytes())
+		mangets = append(mangets, mag.String())
+	}
+	e.db.PersistTorrents(mangets)
+}
 
 func (e *Engine) DownloadUpdates() error {
 
@@ -250,6 +273,7 @@ func (e *Engine) upsertTorrent(tt *torrent.Torrent) *Torrent {
 	}
 	//update torrent fields using underlying torrent
 	torrent.Update(tt)
+	e.persistTorrents()
 	return torrent
 }
 

@@ -15,6 +15,7 @@ type DB struct {
 const favs = "favs"
 const login = "login"
 const bucket = "data"
+const torrents = "torrents"
 
 func GetDB(dir string) *DB {
 	db1, err := bolt.Open(path.Join(dir, ".data.bolt.db"), 0600, nil)
@@ -29,6 +30,30 @@ func GetDB(dir string) *DB {
 		return nil
 	})
 	return &DB{db: db1}
+}
+
+//GetTorrents 获取所有的磁链
+func (d *DB) GetTorrents() []string {
+	var res []string
+	d.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(bucket))
+		data := b.Get([]byte(torrents))
+		return json.Unmarshal(data, &res)
+	})
+	return res
+}
+
+//PersistTorrents 存储磁链
+func (d *DB) PersistTorrents(ts []string) error {
+	return d.db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(bucket))
+		data, err := json.Marshal(&ts)
+		if err != nil {
+			return err
+		}
+		return b.Put([]byte(favs), data)
+	})
+
 }
 
 func (d *DB) GetFavs() []string {
