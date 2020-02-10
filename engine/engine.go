@@ -265,6 +265,9 @@ func (e *Engine) GetTorrents() map[string]*Torrent {
 		return nil
 	}
 	for _, tt := range e.client.Torrents() {
+		if tt.BytesCompleted() == tt.Length() { //download completed
+			tt.Drop()
+		}
 		e.upsertTorrent(tt)
 	}
 	return e.ts
