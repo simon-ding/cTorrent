@@ -41,7 +41,8 @@ func (e *Engine) Config() Config {
 
 func (e *Engine) Configure(c Config) error {
 	e.db.Close()
-	var re = regexp.MustCompile(`.*?S..E..`)
+	var reTV = regexp.MustCompile(`.*?S..E..`)
+	var reMovie = regexp.MustCompile(`(19..)|(20..)`)
 	//recieve config
 	if e.client != nil {
 		e.client.Close()
@@ -56,15 +57,17 @@ func (e *Engine) Configure(c Config) error {
 	tc.NoUpload = !c.EnableUpload
 	tc.Seed = c.EnableSeeding
 	tc.DefaultStorage = storage2.NewFileWithCustomPathMaker(c.DownloadDirectory, func(baseDir string, info *metainfo.Info, infoHash metainfo.Hash) string {
-		if re.MatchString(info.Name) { //is a tv episode
-			name := re.FindString(info.Name) //eg. 猎魔人.The.Witcher.S01E07.中英字幕.WEBrip.720P-人人影视.mp4
+		if reTV.MatchString(info.Name) { //is a tv episode
+			name := reTV.FindString(info.Name) //eg. 猎魔人.The.Witcher.S01E07.中英字幕.WEBrip.720P-人人影视.mp4
 			p := strings.Split(name, ".")
 			if containChinese(p[0]) && len(p) > 2 {
 				p = p[1 : len(p)-1] //去掉开头和结尾，只保留英文部分
 			} else {
 				p = p[:len(p)-1]
 			}
-			return path.Join(baseDir, "TV", strings.Join(p, " "))
+			return path.Join(baseDir, "TVSeries", strings.Join(p, " "))
+		} else if reMovie.MatchString(info.Name) { //this is an movie
+			return path.Join(baseDir, "Movies")
 		}
 		return baseDir
 	})

@@ -2,3 +2,6 @@ downloads
 cloud-torrent.json
 tmp/
 dev.sh
+*.imi
+.vscode/
+.idea/
