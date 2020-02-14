@@ -261,18 +261,21 @@ func (e *Engine) GetTorrents() map[string]*Torrent {
 	e.mut.Lock()
 	defer e.mut.Unlock()
 
-	defer func() {
-		if r := recover(); r != nil {
-			log.Println("recovered from failure: ", r)
-		}
-	}()
 	if e.client == nil {
 		return nil
 	}
 	for _, tt := range e.client.Torrents() {
-		if tt.BytesCompleted() == tt.Length() { //download completed
-			tt.Drop()
-		}
+		go func(t *torrent.Torrent) {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Println("recovered from failure: ", r)
+				}
+			}()
+			if tt.BytesCompleted() == tt.Length() { //download completed
+				tt.Drop()
+			}
+
+		}(tt)
 		e.upsertTorrent(tt)
 	}
 	return e.ts
