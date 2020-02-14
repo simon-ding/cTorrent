@@ -261,6 +261,11 @@ func (e *Engine) GetTorrents() map[string]*Torrent {
 	e.mut.Lock()
 	defer e.mut.Unlock()
 
+	defer func() {
+		if r := recover(); r != nil {
+			log.Println("recovered from failure: ", r)
+		}
+	}()
 	if e.client == nil {
 		return nil
 	}
